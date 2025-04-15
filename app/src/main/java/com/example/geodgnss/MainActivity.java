@@ -7,6 +7,7 @@ import static com.example.geodgnss.NtripClient.GGA_INTERVAL;
 import android.Manifest;
 import android.content.Context;
 import android.content.pm.PackageManager;
+import android.graphics.Color;
 import android.location.GnssClock;
 import android.location.GnssMeasurement;
 import android.location.GnssMeasurementsEvent;
@@ -42,11 +43,16 @@ import android.widget.TextView;
 
 import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 import java.util.Locale;
 import java.util.TimeZone;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
-public class MainActivity extends AppCompatActivity implements NtripClient.NtripCallback {
+public class MainActivity extends AppCompatActivity
+        implements RTKProcessor.RtkResultListener, NtripClient.NtripCallback {
     private NtripClient ntripClient;
     private LocationManager locationManager;
     private boolean isLocationUpdatesRequested = false;
@@ -61,9 +67,21 @@ public class MainActivity extends AppCompatActivity implements NtripClient.Ntrip
     private Location lastLocation;
     private int satelliteCount;
 
+    // Add these declarations
+    private View statusIndicator;
+    private List<GnssMeasurement> currentMeasurements = new ArrayList<>();
+
+    //rtk processor
+    private RTKProcessor rtkProcessor;
+    private long rtkContextHandle;
+
     private GnssMeasurementsEvent.Callback gnssCallback = new GnssMeasurementsEvent.Callback() {
         @Override
         public void onGnssMeasurementsReceived(GnssMeasurementsEvent event) {
+            synchronized (currentMeasurements) {
+                currentMeasurements.clear();
+                currentMeasurements.addAll(event.getMeasurements());
+            }
             processMeasurements(event);
         }
 
@@ -79,6 +97,12 @@ public class MainActivity extends AppCompatActivity implements NtripClient.Ntrip
         setContentView(R.layout.activity_main);
         logTextView = findViewById(R.id.logTextView);
         ntripTextView = findViewById(R.id.ntripTextView);
+        statusIndicator = findViewById(R.id.statusIndicator);
+
+        rtkProcessor = new RTKProcessor();
+        rtkProcessor.setResultListener(this);
+        rtkContextHandle = rtkProcessor.initRtkContext();
+
 
         // Initialize NTRIP client
         ntripClient = new NtripClient("rtk.geodnet.com", 2101, "AUTO", "davidchen", "geodnet2024");
@@ -86,6 +110,12 @@ public class MainActivity extends AppCompatActivity implements NtripClient.Ntrip
         // Initialize location manager
         locationManager = (LocationManager) getSystemService(LOCATION_SERVICE);
         requestLocationUpdates();
+    }
+
+    @Override
+    protected void onDestroy() {
+        rtkProcessor.shutdownRtkContext(rtkContextHandle);
+        super.onDestroy();
     }
 
     @Override
@@ -128,6 +158,34 @@ public class MainActivity extends AppCompatActivity implements NtripClient.Ntrip
         }
     }
 
+    @Override
+    public void onPositionUpdate(double lat, double lon, double alt) {
+        runOnUiThread(() -> {
+            logTextView.append(String.format(Locale.US,
+                    "RTK Fix: %.8f, %.8f, %.2f\n", lat, lon, alt));
+        });
+    }
+
+    @Override
+    public void onSolutionStatus(String status) {
+        runOnUiThread(() -> {
+            String statusMessage = "RTK Status: " + status + "\n";
+            logTextView.append(statusMessage);
+
+            // Update status indicator
+            switch(status) {
+                case "FIXED":
+                    statusIndicator.setBackgroundColor(Color.GREEN);
+                    break;
+                case "FLOAT":
+                    statusIndicator.setBackgroundColor(Color.YELLOW);
+                    break;
+                default:
+                    statusIndicator.setBackgroundColor(Color.RED);
+            }
+        });
+    }
+
     private void startGnssListening() {
         if (locationManager != null) {
             locationManager.registerGnssMeasurementsCallback(gnssCallback);
@@ -148,14 +206,6 @@ public class MainActivity extends AppCompatActivity implements NtripClient.Ntrip
         runOnUiThread(() -> {
             GnssClock clock = event.getClock();
           for (GnssMeasurement measurement : event.getMeasurements()) {
-   /*               logBuilder.append("Svid: ").append(measurement.getSvid())
-                        .append(" Constellation: ").append(measurement.getConstellationType())
-                        .append(" CN0: ").append(measurement.getCn0DbHz())
-                        .append(" Frequency: ").append(measurement.getCarrierFrequencyHz())
-                        .append("\n");
-
-  */
-
 
                 String clockStream =
                         String.format(
@@ -207,6 +257,16 @@ public class MainActivity extends AppCompatActivity implements NtripClient.Ntrip
               updateGnssLog();
 
           }
+        });
+    }
+
+    private ExecutorService rtkExecutor = Executors.newSingleThreadExecutor();
+
+    private void processRtcmData(byte[] rtcmData) {
+        rtkExecutor.execute(() -> {
+            GnssMeasurement[] measurements = getCurrentMeasurements();
+            rtkProcessor.processRtkData(rtkContextHandle, rtcmData, measurements,
+                    System.currentTimeMillis());
         });
     }
 
@@ -294,6 +354,8 @@ public class MainActivity extends AppCompatActivity implements NtripClient.Ntrip
             String message = "Received RTCM: " + data.length + " bytes\n";
             ntripLogBuilder.append(message);
             updateNtripLog();
+
+            processRtcmData(data);
         });
     }
 
@@ -330,7 +392,11 @@ public class MainActivity extends AppCompatActivity implements NtripClient.Ntrip
         ntripClient.disconnect();
     }
 
-
+    private GnssMeasurement[] getCurrentMeasurements() {
+        synchronized (currentMeasurements) {
+            return currentMeasurements.toArray(new GnssMeasurement[0]);
+        }
+    }
     private String generateGGA(GnssMeasurement measurement, Location location) {
         // Convert time to NMEA format
         SimpleDateFormat sdf = new SimpleDateFormat("HHmmss.SSS", Locale.getDefault());
@@ -401,6 +467,8 @@ public class MainActivity extends AppCompatActivity implements NtripClient.Ntrip
             updateNtripLog();
         }
     }
+
+
     // Updated GGA generator
     private String generateGGA(Location location, int satelliteCount) {
         SimpleDateFormat sdf = new SimpleDateFormat("HHmmss.SSS", Locale.US);

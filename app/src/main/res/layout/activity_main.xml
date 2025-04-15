@@ -7,6 +7,16 @@
     android:layout_height="match_parent"
     tools:context=".MainActivity">
 
+    <!-- Add at top of CoordinatorLayout -->
+    <View
+        android:id="@+id/statusIndicator"
+        android:layout_width="16dp"
+        android:layout_height="16dp"
+        android:layout_margin="8dp"
+        android:background="@drawable/status_indicator"
+        app:layout_anchor="@id/toolbar"
+        app:layout_anchorGravity="top|end"/>
+
     <com.google.android.material.appbar.AppBarLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"

@@ -1,0 +1,19 @@
+cmake_minimum_required(VERSION 3.22.1)
+project(rtkprocessor)
+
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17 -frtti -fexceptions")
+
+find_library(log-lib log)
+
+add_library(rtkprocessor SHARED
+            rtk_processor.cpp
+            rtklib/src/rcvraw.c
+            rtklib/src/rtkcmn.c
+            rtklib/src/rtkpos.c)
+
+target_include_directories(rtkprocessor PRIVATE
+                          ${CMAKE_CURRENT_SOURCE_DIR}/rtklib/include)
+
+target_link_libraries(rtkprocessor
+                      android
+                      ${log-lib})
