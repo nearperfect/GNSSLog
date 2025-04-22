@@ -13,6 +13,7 @@ static nav_t nav_default = {0};
 static JavaVM *jvm = nullptr;
 static jclass class_RTKProcessor;
 static jmethodID method_updatePosition;
+static jmethodID method_solutionStatus;
 
 
 static void convert_gnss_measurement(JNIEnv *env, jobject meas_obj, obsd_t *obs) {
@@ -99,7 +100,7 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *reserved) {
     jclass cls = env->FindClass("com/example/geodgnss/RTKProcessor");
     class_RTKProcessor = static_cast<jclass>(env->NewGlobalRef(cls));
     method_updatePosition = env->GetMethodID(cls, "updatePosition", "(DDD)V");
-
+    //method_solutionStatus = env->GetMethodID(cls, "solutionStatus", "(L)V");
     return JNI_VERSION_1_6;
 }
 
@@ -192,12 +193,12 @@ Java_com_example_geodgnss_RTKProcessor_processRtkData(JNIEnv *env, jobject thiz,
 
     delete[] obs;
 
-    /*
+/*
     const char* status_str;
-    switch(ctx->rtk.sol.status) {
-        case rtklib::SOLQ_FIX: status_str = "FIXED"; break;
-        case rtklib::SOLQ_FLOAT: status_str = "FLOAT"; break;
-        case rtklib::SOLQ_SINGLE: status_str = "SINGLE"; break;
+    switch(ctx->rtk.sol.stat) {
+        case SOLQ_FIX: status_str = "FIXED"; break;
+        case SOLQ_FLOAT: status_str = "FLOAT"; break;
+        case SOLQ_SINGLE: status_str = "SINGLE"; break;
         default: status_str = "NO SOLUTION";
     }
 
@@ -207,15 +208,16 @@ Java_com_example_geodgnss_RTKProcessor_processRtkData(JNIEnv *env, jobject thiz,
     // Call status callback
     env->CallVoidMethod(thiz, method_onSolutionStatus, jstatus);
     env->DeleteLocalRef(jstatus);
+*/
 
     // Callback position update
-    if(ctx->rtk.sol.status == SOLQ_FIX) {
+    if(ctx->rtk.sol.stat == SOLQ_FIX) {
         jdouble lat = ctx->rtk.sol.rr[0];
         jdouble lon = ctx->rtk.sol.rr[1];
         jdouble alt = ctx->rtk.sol.rr[2];
 
         env->CallVoidMethod(thiz, method_updatePosition, lat, lon, alt);
-    }*/
+    }
 }
 
 JNIEXPORT void JNICALL

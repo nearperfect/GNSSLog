@@ -162,8 +162,9 @@ public class MainActivity extends AppCompatActivity
     @Override
     public void onPositionUpdate(double lat, double lon, double alt) {
         runOnUiThread(() -> {
-            logTextView.append(String.format(Locale.US,
+            updateGnssLog.append(String.format(Locale.US,
                     "RTK Fix: %.8f, %.8f, %.2f\n", lat, lon, alt));
+            updateGnssLog();
         });
     }
 
@@ -171,7 +172,7 @@ public class MainActivity extends AppCompatActivity
     public void onSolutionStatus(String status) {
         runOnUiThread(() -> {
             String statusMessage = "RTK Status: " + status + "\n";
-            logTextView.append(statusMessage);
+            updateGnssLog.append(statusMessage);
 
             // Update status indicator
             switch(status) {
@@ -184,6 +185,8 @@ public class MainActivity extends AppCompatActivity
                 default:
                     statusIndicator.setBackgroundColor(Color.RED);
             }
+
+            updateGnssLog();
         });
     }
 

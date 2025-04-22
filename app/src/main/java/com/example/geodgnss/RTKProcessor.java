@@ -37,4 +37,13 @@ public class RTKProcessor {
                     listener.onPositionUpdate(lat, lon, alt));
         }
     }
+
+    // Called from native code
+    @SuppressWarnings("unused")
+    private void solutionStatus(String str) {
+        if (listener != null) {
+            new Handler(Looper.getMainLooper()).post(() ->
+                    listener.onSolutionStatus(str));
+        }
+    }
 }
