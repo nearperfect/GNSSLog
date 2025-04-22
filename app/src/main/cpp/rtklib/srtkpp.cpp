@@ -427,7 +427,7 @@ static int process_log(const char* rovefname, const char* basefname, const char*
     return ret;
 }
 
-/* srtkpp main -------------------------------------------------------------*/
+/* srtkpp main -------------------------------------------------------------
 int main(int argc, char** argv)
 {
     int ret = 0;
@@ -494,3 +494,4 @@ int main(int argc, char** argv)
     }
     return ret;
 }
+*/

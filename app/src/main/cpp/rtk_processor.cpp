@@ -83,6 +83,9 @@ static void convert_gnss_measurement(JNIEnv *env, jobject meas_obj, obsd_t *obs)
     // Set default values for other fields
     obs->rcv = 1;  // Receiver number
     obs->code[0] = CODE_L1C;  // Default to L1 C/A code
+
+    __android_log_print(ANDROID_LOG_DEBUG, "RTK", "satellite: sys=%d prn=%d", sys, svid);
+
 }
 
 
