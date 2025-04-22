@@ -162,7 +162,7 @@ public class MainActivity extends AppCompatActivity
     @Override
     public void onPositionUpdate(double lat, double lon, double alt) {
         runOnUiThread(() -> {
-            updateGnssLog.append(String.format(Locale.US,
+            gnssLogBuilder.append(String.format(Locale.US,
                     "RTK Fix: %.8f, %.8f, %.2f\n", lat, lon, alt));
             updateGnssLog();
         });
@@ -172,7 +172,7 @@ public class MainActivity extends AppCompatActivity
     public void onSolutionStatus(String status) {
         runOnUiThread(() -> {
             String statusMessage = "RTK Status: " + status + "\n";
-            updateGnssLog.append(statusMessage);
+            gnssLogBuilder.append(statusMessage);
 
             // Update status indicator
             switch(status) {
