@@ -102,6 +102,7 @@ public class MainActivity extends AppCompatActivity
         rtkProcessor = new RTKProcessor();
         rtkProcessor.setResultListener(this);
         rtkContextHandle = rtkProcessor.initRtkContext();
+        rtkProcessor.initNavigation();
 
 
         // Initialize NTRIP client

@@ -1150,35 +1150,6 @@ typedef struct {        /* RTK control/result type */
     prcopt_t opt;       /* processing options */
 } rtk_t;
 
-typedef struct {        /* receiver raw data control type */
-    gtime_t time;       /* message time */
-    gtime_t tobs[MAXSAT][NFREQ+NEXOBS]; /* observation data time */
-    obs_t obs;          /* observation data */
-    obs_t obuf;         /* observation data buffer */
-    nav_t nav;          /* satellite ephemerides */
-    sta_t sta;          /* station parameters */
-    int ephsat;         /* update satelle of ephemeris (0:no satellite) */
-    int ephset;         /* update set of ephemeris (0-1) */
-    sbsmsg_t sbsmsg;    /* SBAS message */
-    char msgtype[256];  /* last message type */
-    uint8_t subfrm[MAXSAT][380]; /* subframe buffer */
-    double lockt[MAXSAT][NFREQ+NEXOBS]; /* lock time (s) */
-    double icpp[MAXSAT],off[MAXSAT],icpc; /* carrier params for ss2 */
-    double prCA[MAXSAT],dpCA[MAXSAT]; /* L1/CA pseudrange/doppler for javad */
-    uint8_t halfc[MAXSAT][NFREQ+NEXOBS]; /* half-cycle add flag */
-    char freqn[MAXOBS]; /* frequency number for javad */
-    int nbyte;          /* number of bytes in message buffer */ 
-    int len;            /* message length (bytes) */
-    int iod;            /* issue of data */
-    int tod;            /* time of day (ms) */
-    int tbase;          /* time base (0:gpst,1:utc(usno),2:glonass,3:utc(su) */
-    int flag;           /* general purpose flag */
-    int outtype;        /* output message type */
-    uint8_t buff[MAXRAWLEN]; /* message buffer */
-    char opt[256];      /* receiver dependent options */
-    int format;         /* receiver stream format */
-    void *rcv_data;     /* receiver dependent data */
-} raw_t;
 
 typedef struct {        /* stream type */
     int type;           /* type (STR_???) */
@@ -1205,7 +1176,6 @@ typedef struct {        /* stream converter type */
     int ephsat[32];     /* satellites of output ephemeris */
     int stasel;         /* station info selection (0:remote,1:local) */
     rtcm_t rtcm;        /* rtcm input data buffer */
-    raw_t raw;          /* raw  input data buffer */
     rtcm_t out;         /* rtcm output data buffer */
 } strconv_t;
 
@@ -1250,7 +1220,6 @@ typedef struct {        /* RTK server type */
     uint8_t *pbuf[3];   /* peek buffers {rov,base,corr} */
     sol_t solbuf[MAXSOLBUF]; /* solution buffer */
     uint32_t nmsg[3][10]; /* input message counts */
-    raw_t  raw [3];     /* receiver raw control {rov,base,corr} */
     rtcm_t rtcm[3];     /* RTCM control {rov,base,corr} */
     gtime_t ftime[3];   /* download time {rov,base,corr} */
     char files[3][MAXSTRPATH]; /* download paths {rov,base,corr} */
@@ -1576,43 +1545,6 @@ EXPORT int decode_gal_fnav(const uint8_t *buff, eph_t *eph, double *ion,
 EXPORT int decode_irn_nav(const uint8_t *buff, eph_t *eph, double *ion,
                           double *utc);
 
-EXPORT int init_raw   (raw_t *raw, int format);
-EXPORT void free_raw  (raw_t *raw);
-EXPORT int input_raw  (raw_t *raw, int format, uint8_t data);
-EXPORT int input_rawf (raw_t *raw, int format, FILE *fp);
-
-EXPORT int init_rt17  (raw_t *raw);
-EXPORT int init_cmr   (raw_t *raw);
-EXPORT void free_rt17 (raw_t *raw);
-EXPORT void free_cmr  (raw_t *raw);
-EXPORT int update_cmr (raw_t *raw, rtksvr_t *svr, obs_t *obs);
-
-EXPORT int input_oem4  (raw_t *raw, uint8_t data);
-EXPORT int input_oem3  (raw_t *raw, uint8_t data);
-EXPORT int input_ubx   (raw_t *raw, uint8_t data);
-EXPORT int input_ss2   (raw_t *raw, uint8_t data);
-EXPORT int input_cres  (raw_t *raw, uint8_t data);
-EXPORT int input_stq   (raw_t *raw, uint8_t data);
-EXPORT int input_javad (raw_t *raw, uint8_t data);
-EXPORT int input_nvs   (raw_t *raw, uint8_t data);
-EXPORT int input_bnx   (raw_t *raw, uint8_t data);
-EXPORT int input_rt17  (raw_t *raw, uint8_t data);
-EXPORT int input_sbf   (raw_t *raw, uint8_t data);
-EXPORT int input_oem4f (raw_t *raw, FILE *fp);
-EXPORT int input_oem3f (raw_t *raw, FILE *fp);
-EXPORT int input_ubxf  (raw_t *raw, FILE *fp);
-EXPORT int input_ss2f  (raw_t *raw, FILE *fp);
-EXPORT int input_cresf (raw_t *raw, FILE *fp);
-EXPORT int input_stqf  (raw_t *raw, FILE *fp);
-EXPORT int input_javadf(raw_t *raw, FILE *fp);
-EXPORT int input_nvsf  (raw_t *raw, FILE *fp);
-EXPORT int input_bnxf  (raw_t *raw, FILE *fp);
-EXPORT int input_rt17f (raw_t *raw, FILE *fp);
-EXPORT int input_sbff  (raw_t *raw, FILE *fp);
-
-EXPORT int gen_ubx (const char *msg, uint8_t *buff);
-EXPORT int gen_stq (const char *msg, uint8_t *buff);
-EXPORT int gen_nvs (const char *msg, uint8_t *buff);
 
 /* rtcm functions ------------------------------------------------------------*/
 EXPORT int init_rtcm   (rtcm_t *rtcm);

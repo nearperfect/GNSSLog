@@ -5,6 +5,8 @@ import android.os.Handler;
 import android.os.Looper;
 
 public class RTKProcessor {
+
+
     static {
         System.loadLibrary("rtkprocessor");
     }
@@ -16,6 +18,7 @@ public class RTKProcessor {
 
     private RtkResultListener listener;
 
+    public native void initNavigation();
     public native long initRtkContext();
     public native void processRtkData(long contextHandle, byte[] rtcmData,
                                       GnssMeasurement[] measurements,
