@@ -4,6 +4,10 @@
 #include <cmath>
 #include <ctime>
 
+#define TAG "NativeLog"
+#define LOGI(...) __android_log_print(ANDROID_LOG_INFO, TAG, __VA_ARGS__)
+#define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, TAG, __VA_ARGS__)
+
 //namespace rtklib = ::rtk;
 //EXPORT void rtkinit(rtk_t *rtk, const prcopt_t *opt);
 
@@ -96,7 +100,7 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *reserved) {
     if (vm->GetEnv(reinterpret_cast<void**>(&env), JNI_VERSION_1_6) != JNI_OK) {
         return JNI_ERR;
     }
-
+    LOGI("Android load so init updatePosition call back");
     jclass cls = env->FindClass("com/example/geodgnss/RTKProcessor");
     class_RTKProcessor = static_cast<jclass>(env->NewGlobalRef(cls));
     method_updatePosition = env->GetMethodID(cls, "updatePosition", "(DDD)V");
@@ -126,7 +130,9 @@ Java_com_example_geodgnss_RTKProcessor_initRtkContext(JNIEnv *env, jobject thiz)
 
     // Initialize RTKLIB context
     init_rtcm(&ctx->rtcm);
+    LOGI("Android load so rtcm init");
     rtkinit(&ctx->rtk, &prcopt_default);
+    LOGI("Android load so rtk init");
     return reinterpret_cast<jlong>(ctx);
 }
 
@@ -185,8 +191,9 @@ Java_com_example_geodgnss_RTKProcessor_processRtkData(JNIEnv *env, jobject thiz,
     // Execute RTK processing
     rtkpos(&ctx->rtk, obs, num_meas, &nav_default);
 
+    LOGE("Android ctx->rtk.sol.stat =%d",ctx->rtk.sol.stat);
     // Callback position update
-    if(ctx->rtk.sol.stat == SOLQ_FIX) {
+    if(ctx->rtk.sol.stat == SOLQ_FIX || ctx->rtk.sol.stat == SOLQ_FLOAT) {
         env->CallVoidMethod(thiz, method_updatePosition,
                             ctx->rtk.sol.rr[0], ctx->rtk.sol.rr[1], ctx->rtk.sol.rr[2]);
     }
