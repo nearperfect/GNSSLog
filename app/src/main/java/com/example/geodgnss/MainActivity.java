@@ -24,6 +24,7 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import android.os.Handler;
 import android.os.SystemClock;
+import android.util.Log;
 import android.view.View;
 
 import androidx.core.app.ActivityCompat;
@@ -41,6 +42,11 @@ import android.view.MenuItem;
 import android.widget.ScrollView;
 import android.widget.TextView;
 
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -70,6 +76,10 @@ public class MainActivity extends AppCompatActivity
     // Add these declarations
     private View statusIndicator;
     private List<GnssMeasurement> currentMeasurements = new ArrayList<>();
+    private String gnssFileName;
+    private String rtcmFileName;
+    private ExecutorService fileExecutor = Executors.newSingleThreadExecutor();
+    private ExecutorService rtkExecutor = Executors.newSingleThreadExecutor();
 
     //rtk processor
     private RTKProcessor rtkProcessor;
@@ -81,6 +91,11 @@ public class MainActivity extends AppCompatActivity
             synchronized (currentMeasurements) {
                 currentMeasurements.clear();
                 currentMeasurements.addAll(event.getMeasurements());
+
+                GnssMeasurement[] measurements = getCurrentMeasurements();
+                rtkProcessor.processRtkData(rtkContextHandle, measurements,
+                        System.currentTimeMillis());
+
             }
             processMeasurements(event);
         }
@@ -111,6 +126,13 @@ public class MainActivity extends AppCompatActivity
         // Initialize location manager
         locationManager = (LocationManager) getSystemService(LOCATION_SERVICE);
         requestLocationUpdates();
+
+// Initialize file names with timestamp
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US);
+        String timestamp = sdf.format(new Date());
+        gnssFileName = "gnss_" + timestamp + ".log";
+        rtcmFileName = "rtcm_" + timestamp + ".bin";
+
     }
 
     @Override
@@ -206,26 +228,35 @@ public class MainActivity extends AppCompatActivity
         }
     }
 
+
+    // Add these file writing methods
+    private void writeGnssToFile(String dataLine) {
+        fileExecutor.execute(() -> {
+            File file = new File(getFilesDir(), gnssFileName);
+            try (FileWriter fw = new FileWriter(file, true);
+                 BufferedWriter bw = new BufferedWriter(fw)) {
+                bw.write(dataLine);
+                bw.newLine();
+            } catch (IOException e) {
+                Log.e("MainActivity", "Error writing GNSS data", e);
+            }
+        });
+    }
+
+    private void writeRtcmToFile(byte[] data) {
+        fileExecutor.execute(() -> {
+            File file = new File(getFilesDir(), rtcmFileName);
+            try (FileOutputStream fos = new FileOutputStream(file, true)) {
+                fos.write(data);
+            } catch (IOException e) {
+                Log.e("MainActivity", "Error writing RTCM data", e);
+            }
+        });
+    }
     private void processMeasurements(GnssMeasurementsEvent event) {
         runOnUiThread(() -> {
             GnssClock clock = event.getClock();
           for (GnssMeasurement measurement : event.getMeasurements()) {
-
-                String clockStream =
-                        String.format(
-                                "Raw,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s",
-                                SystemClock.elapsedRealtime(),
-                                clock.getTimeNanos(),
-                                clock.hasLeapSecond() ? clock.getLeapSecond() : "",
-                                clock.hasTimeUncertaintyNanos() ? clock.getTimeUncertaintyNanos() : "",
-                                clock.getFullBiasNanos(),
-                                clock.hasBiasNanos() ? clock.getBiasNanos() : "",
-                                clock.hasBiasUncertaintyNanos() ? clock.getBiasUncertaintyNanos() : "",
-                                clock.hasDriftNanosPerSecond() ? clock.getDriftNanosPerSecond() : "",
-                                clock.hasDriftUncertaintyNanosPerSecond()
-                                        ? clock.getDriftUncertaintyNanosPerSecond()
-                                        : "",
-                                clock.getHardwareClockDiscontinuityCount() + ",");
 
                 //gnssLogBuilder.append(clockStream).append("\n");
                 String measurementStream =
@@ -257,6 +288,8 @@ public class MainActivity extends AppCompatActivity
                                         : "");
 
               gnssLogBuilder.append(measurementStream).append("\n\n");
+              writeGnssToFile(measurementStream);
+
 
               updateGnssLog();
 
@@ -264,12 +297,11 @@ public class MainActivity extends AppCompatActivity
         });
     }
 
-    private ExecutorService rtkExecutor = Executors.newSingleThreadExecutor();
 
     private void processRtcmData(byte[] rtcmData) {
         rtkExecutor.execute(() -> {
-            GnssMeasurement[] measurements = getCurrentMeasurements();
-            rtkProcessor.processRtkData(rtkContextHandle, rtcmData, measurements,
+            //GnssMeasurement[] measurements = getCurrentMeasurements();
+            rtkProcessor.updateRtcmData(rtkContextHandle, rtcmData,
                     System.currentTimeMillis());
         });
     }
@@ -358,7 +390,7 @@ public class MainActivity extends AppCompatActivity
             String message = "Received RTCM: " + data.length + " bytes\n";
             ntripLogBuilder.append(message);
             updateNtripLog();
-
+            writeRtcmToFile(data);
             processRtcmData(data);
         });
     }

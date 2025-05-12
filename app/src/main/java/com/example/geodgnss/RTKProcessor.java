@@ -20,7 +20,10 @@ public class RTKProcessor {
 
     public native void initNavigation();
     public native long initRtkContext();
-    public native void processRtkData(long contextHandle, byte[] rtcmData,
+
+    public native void updateRtcmData(long contextHandle, byte[] rtcmData,
+                                      long receiverTime);
+    public native void processRtkData(long contextHandle,
                                       GnssMeasurement[] measurements,
                                       long receiverTime);
     public native void shutdownRtkContext(long contextHandle);
