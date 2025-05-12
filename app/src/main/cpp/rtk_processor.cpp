@@ -109,6 +109,7 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *reserved) {
 
 JNIEXPORT jlong JNICALL
 Java_com_example_geodgnss_RTKProcessor_initRtkContext(JNIEnv *env, jobject thiz) {
+/*
     auto *ctx = new RtkContext();
     // Initialize structures
     memset(&ctx->rtk, 0, sizeof(rtk_t));
@@ -121,6 +122,7 @@ Java_com_example_geodgnss_RTKProcessor_initRtkContext(JNIEnv *env, jobject thiz)
     rtkinit(&ctx->rtk, &prcopt_default);
     LOGI("Android load so rtk init");
     return reinterpret_cast<jlong>(ctx);
+    */
 }
 
 // Initialize navigation data (call this once)
