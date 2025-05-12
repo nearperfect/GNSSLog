@@ -122,6 +122,7 @@ public class MainActivity extends AppCompatActivity
 
         // Initialize NTRIP client
         ntripClient = new NtripClient("rtk.geodnet.com", 2101, "AUTO", "davidchen", "geodnet2024");
+//        ntripClient = new NtripClient("120.253.226.97", 8001, "RTCM33_GRCEJ", "cuke004", "4h5s68ja");
 
         // Initialize location manager
         locationManager = (LocationManager) getSystemService(LOCATION_SERVICE);
@@ -312,6 +313,7 @@ public class MainActivity extends AppCompatActivity
         @Override
         public void onLocationChanged(Location location) {
             lastLocation = location;
+            Log.e("LocationManager", "" + location);
             if(!bLocationUpdated) {
                 ntripLogBuilder.append("Location updated: "
                         + location.getLatitude() + ", "
@@ -343,11 +345,23 @@ public class MainActivity extends AppCompatActivity
         if (checkPermission() && !isLocationUpdatesRequested) {
             try {
                 // Request both GNSS measurements and location updates
-                locationManager.requestLocationUpdates(
-                        LocationManager.GPS_PROVIDER,
-                        1000,  // 1 second interval
-                        0,     // Minimum distance (meters)
-                        locationListener);
+                if (locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
+                    locationManager.requestLocationUpdates(
+                            LocationManager.GPS_PROVIDER,
+                            500L,
+                            0f,
+                            locationListener
+                    );
+                }
+
+                if (locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER)) {
+                    locationManager.requestLocationUpdates(
+                            LocationManager.NETWORK_PROVIDER,
+                            500L,
+                            0f,
+                            locationListener
+                    );
+                }
 
                 isLocationUpdatesRequested = true;
                 ntripLogBuilder.append("Started location updates\n");

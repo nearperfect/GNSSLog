@@ -4,6 +4,10 @@
 #include <cmath>
 #include <ctime>
 
+#define TAG "NativeLog"
+#define LOGI(...) __android_log_print(ANDROID_LOG_INFO, TAG, __VA_ARGS__)
+#define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, TAG, __VA_ARGS__)
+
 //namespace rtklib = ::rtk;
 //EXPORT void rtkinit(rtk_t *rtk, const prcopt_t *opt);
 
@@ -95,7 +99,7 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *reserved) {
     if (vm->GetEnv(reinterpret_cast<void**>(&env), JNI_VERSION_1_6) != JNI_OK) {
         return JNI_ERR;
     }
-
+    LOGI("Android load so init updatePosition call back");
     jclass cls = env->FindClass("com/example/geodgnss/RTKProcessor");
     class_RTKProcessor = static_cast<jclass>(env->NewGlobalRef(cls));
     method_updatePosition = env->GetMethodID(cls, "updatePosition", "(DDD)V");
@@ -105,7 +109,17 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *reserved) {
 
 JNIEXPORT jlong JNICALL
 Java_com_example_geodgnss_RTKProcessor_initRtkContext(JNIEnv *env, jobject thiz) {
-    auto *ctx = new artk_t();
+    auto *ctx = new RtkContext();
+    // Initialize structures
+    memset(&ctx->rtk, 0, sizeof(rtk_t));
+    memset(&ctx->nav, 0, sizeof(nav_t));
+    memset(&ctx->obs, 0, sizeof(obs_t));
+
+    // Initialize RTKLIB context
+    init_rtcm(&ctx->rtcm);
+    LOGI("Android load so rtcm init");
+    rtkinit(&ctx->rtk, &prcopt_default);
+    LOGI("Android load so rtk init");
     return reinterpret_cast<jlong>(ctx);
 }
 

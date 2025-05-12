@@ -49,6 +49,7 @@
 *-----------------------------------------------------------------------------*/
 #include <stdarg.h>
 #include "rtklib.h"
+#include <android/log.h>
 
 /* constants/macros ----------------------------------------------------------*/
 
@@ -88,6 +89,11 @@
 #define IT(r,opt)   (NP(opt)+NI(opt)+NT(opt)/2*(r)) /* tropos (r:0=rov,1:ref) */
 #define IL(f,opt)   (NP(opt)+NI(opt)+NT(opt)+(f))   /* receiver h/w bias */
 #define IB(s,f,opt) (NR(opt)+MAXSAT*(f)+(s)-1) /* phase bias (s:satno,f:freq) */
+
+/* Print log */
+#define TAG "NativeLog"
+#define LOGI(...) __android_log_print(ANDROID_LOG_INFO, TAG, __VA_ARGS__)
+#define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, TAG, __VA_ARGS__)
 
 /* global variables ----------------------------------------------------------*/
 static int statlevel=0;          /* rtk status output level (0:off) */
@@ -1756,6 +1762,7 @@ extern void rtkfree(rtk_t *rtk)
 *-----------------------------------------------------------------------------*/
 extern int rtkpos(rtk_t *rtk, const obsd_t *obs, int n, const nav_t *nav)
 {
+    LOGE("Android rtkpos=%s","run");
     prcopt_t *opt=&rtk->opt;
     sol_t solb={{0}};
     gtime_t time;
@@ -1779,14 +1786,16 @@ extern int rtkpos(rtk_t *rtk, const obsd_t *obs, int n, const nav_t *nav)
     /* rover position by single point positioning */
     if (!pntpos(obs,nu,nav,&rtk->opt,&rtk->sol,NULL,rtk->ssat,msg)) {
         errmsg(rtk,"point pos error (%s)\n",msg);
-        
+
+        LOGE("Android pntpos=%s","run");
         if (!rtk->opt.dynamics) {
             outsolstat(rtk);
             return 0;
         }
     }
     if (time.time!=0) rtk->tt=timediff(rtk->sol.time,time);
-    
+
+    LOGE("Android opt->mode=%d",opt->mode);
     /* single point positioning */
     if (opt->mode==PMODE_SINGLE) {
         outsolstat(rtk);
@@ -1803,8 +1812,8 @@ extern int rtkpos(rtk_t *rtk, const obsd_t *obs, int n, const nav_t *nav)
         return 1;
     }
     /* check number of data of base station and age of differential */
-    if (nr==0) {
-        errmsg(rtk,"no base station observation data for rtk\n");
+    if (nr==0||fabs(rtk->rb[0])<0.001||fabs(rtk->rb[1])<0.001||fabs(rtk->rb[2])<0.001) {
+        errmsg(rtk,"no base station observation or coordinate data for rtk %i\n",nr);
         outsolstat(rtk);
         return 1;
     }
@@ -1816,7 +1825,8 @@ extern int rtkpos(rtk_t *rtk, const obsd_t *obs, int n, const nav_t *nav)
             return 0;
         }
         rtk->sol.age=(float)timediff(rtk->sol.time,solb.time);
-        
+
+        LOGE("Android fabs(rtk->sol.age)>TTOL_MOVEB=%d",fabs(rtk->sol.age)>TTOL_MOVEB);
         if (fabs(rtk->sol.age)>TTOL_MOVEB) {
             errmsg(rtk,"time sync error for moving-base (age=%.1f)\n",rtk->sol.age);
             return 0;
@@ -1828,7 +1838,8 @@ extern int rtkpos(rtk_t *rtk, const obsd_t *obs, int n, const nav_t *nav)
     }
     else {
         rtk->sol.age=(float)timediff(obs[0].time,obs[nu].time);
-        
+
+        LOGE("Android fabs(rtk->sol.age)>opt->maxtdiff=%d",fabs(rtk->sol.age)>opt->maxtdiff);
         if (fabs(rtk->sol.age)>opt->maxtdiff) {
             errmsg(rtk,"age of differential error (age=%.1f)\n",rtk->sol.age);
             outsolstat(rtk);
